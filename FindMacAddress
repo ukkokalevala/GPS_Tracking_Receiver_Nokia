@@ -1,0 +1,21 @@
+#include <ESP8266WiFi.h>  // Use ESP32WiFi.h for ESP32
+
+void setup() {
+  // Start the Serial Monitor
+  Serial.begin(9600);
+  delay(1000);
+
+  // Initialize WiFi (not connecting, just getting MAC)
+  WiFi.mode(WIFI_STA);  // Set Wi-Fi mode to Station (client)
+
+  // Get the MAC address
+  String macAddress = WiFi.macAddress();
+// A0:20:A6:36:66:2E
+  // Print the MAC address to the Serial Monitor
+  Serial.print("MAC Address: ");
+  Serial.println(macAddress);
+}
+
+void loop() {
+  // Do nothing in loop
+}
