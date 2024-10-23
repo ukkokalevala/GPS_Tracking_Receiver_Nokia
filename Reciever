@@ -1,0 +1,75 @@
+#include <ESP8266WiFi.h>
+#include <espnow.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_PCD8544.h>
+// A0:20:A6:36:66:2E
+// Structure to hold received GPS data
+typedef struct struct_message {
+  float latitude;
+  float longitude;
+  float speed;
+} struct_message;
+
+struct_message gpsData;
+
+// Nokia 5110 LCD setup
+Adafruit_PCD8544 display(D1, D2, D5, D6, D7);
+
+// Callback function for ESP-NOW
+void OnDataRecv(uint8_t *mac_addr, uint8_t *incomingData, uint8_t len) {
+  memcpy(&gpsData, incomingData, sizeof(gpsData));
+
+  // Display GPS data on Nokia LCD
+  display.clearDisplay();
+  
+  display.setCursor(0, 0);
+  display.print("Lat: ");
+  display.println(gpsData.latitude, 6);
+  
+  display.setCursor(0, 10);
+  display.print("Lng: ");
+  display.println(gpsData.longitude, 6);
+  
+  display.setCursor(0, 20);
+  display.print("Spd: ");
+  display.println(gpsData.speed);
+
+  display.display();
+
+  // Debug output to Serial Monitor
+  Serial.print("Lat: ");
+  Serial.println(gpsData.latitude, 6);
+  Serial.print("Lng: ");
+  Serial.println(gpsData.longitude, 6);
+  Serial.print("Speed (km/h): ");
+  Serial.println(gpsData.speed);
+}
+
+void setup() {
+  Serial.begin(9600);
+  
+  // Initialize the LCD
+  display.begin();
+  display.setContrast(50);
+  display.setRotation(2);
+  display.clearDisplay();
+  display.display();
+
+  display.setTextSize(1);
+  display.setTextColor(BLACK);
+  
+  // Initialize WiFi in Station mode for ESP-NOW
+  WiFi.mode(WIFI_STA);
+  if (esp_now_init() != 0) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+
+  // Register receive callback function
+  esp_now_set_self_role(ESP_NOW_ROLE_SLAVE);
+  esp_now_register_recv_cb(OnDataRecv);
+}
+
+void loop() {
+  // Do nothing in loop, waiting for data
+}
