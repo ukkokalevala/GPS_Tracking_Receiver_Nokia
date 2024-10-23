@@ -1,0 +1,66 @@
+#include <ESP8266WiFi.h>
+#include <espnow.h>
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+
+// GPS module setup
+SoftwareSerial gpsSerial(D1, D2); // RX, TX
+TinyGPSPlus gps;
+
+// Structure to hold GPS data
+typedef struct struct_message {
+  float latitude;
+  float longitude;
+  float speed;
+} struct_message;
+
+struct_message gpsData;
+
+// Callback function for ESP-NOW
+void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
+  Serial.print("Send Status: ");
+  Serial.println(sendStatus == 0 ? "Success" : "Fail");
+}
+
+void setup() {
+  Serial.begin(9600);
+  gpsSerial.begin(9600); // GPS baud rate
+
+  // Initialize WiFi in Station mode for ESP-NOW
+  WiFi.mode(WIFI_STA);
+  if (esp_now_init() != 0) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+  esp_now_set_self_role(ESP_NOW_ROLE_CONTROLLER);
+  esp_now_register_send_cb(OnDataSent);
+
+  // Peer information (Receiver MAC address)
+  //uint8_t peerAddress[] = {0x24, 0x6F, 0x28, 0xAA, 0xBB, 0xCC}; // Replace with actual receiver's MAC address
+  uint8_t peerAddress[] = {0xA0, 0x20, 0xA6, 0x36, 0x66, 0x2E}; // Replace with actual receiver's MAC address
+  esp_now_add_peer(peerAddress, ESP_NOW_ROLE_SLAVE, 1, NULL, 0);
+}
+
+void loop() {
+  while (gpsSerial.available() > 0) {
+    gps.encode(gpsSerial.read());
+
+    if (gps.location.isUpdated()) {
+      // Prepare GPS data
+      gpsData.latitude = gps.location.lat();
+      gpsData.longitude = gps.location.lng();
+      gpsData.speed = gps.speed.kmph();
+
+      // Send data via ESP-NOW
+      esp_now_send(NULL, (uint8_t *)&gpsData, sizeof(gpsData));
+
+      // Debug output
+      Serial.print("Lat: ");
+      Serial.println(gpsData.latitude, 6);
+      Serial.print("Lng: ");
+      Serial.println(gpsData.longitude, 6);
+      Serial.print("Speed (km/h): ");
+      Serial.println(gpsData.speed);
+    }
+  }
+}
